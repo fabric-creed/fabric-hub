@@ -1,0 +1,6 @@
+.idea
+cmd/client/test
+cmd/client/client
+cmd/server/test
+cmd/server/server
+contact/proxy2

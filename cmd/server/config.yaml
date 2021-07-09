@@ -1,0 +1,46 @@
+dbPath: ./store
+
+# 需要连接到远端网关的配置
+remoteNamespace:
+  - name: sss
+    address: 127.0.0.1
+    clientConfig:
+      useTLS: true
+      serverRootCAPath: ./test/ca.crt
+      isGm: true
+    # 用于对收到的消息进行签名校验
+    csp:
+      cert: ./test/server.crt
+    channels:
+      - name: mychannel
+        id: 1411931467332157440
+        proxyChainCodeName: myproxy
+        routerChainCodeName: router
+
+# 本地通道相关配置
+localFabricNamespace:
+  - name: local-fabric
+    # 用于对消息进行签名
+    csp:
+      privateKey: ./test/server.key
+      cert: ./test/server.crt
+    fabricConfigPath: ./test/fabric1.yaml
+    organization: org1
+    user: Admin
+    channels:
+      - name: mychannel
+        # 这里ID通过tool生成
+        id: 1411931388202418176
+        proxyChainCodeName: myproxy
+        routerChainCodeName: router
+    isGM: true
+
+# 网关grpc server配置
+serverConfig:
+  useTLS: true
+  serverKeyPath: ./test/server.key
+  serverCertPath: ./test/server.crt
+  serverRootCAPath: ./test/ca.crt
+  requireClientAuth: false
+  port: 1000
+

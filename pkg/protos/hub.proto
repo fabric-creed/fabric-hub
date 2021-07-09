@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+option go_package = "pkg/protos/pb";
+
+service Hub {
+    // 非事务跨链调用
+    rpc NoTransactionCall(NoTransactionCallRequest) returns (CommonResponseMessage) {}
+    // 开启事务
+    rpc StartTransaction(StartTransactionRequest) returns (CommonResponseMessage) {}
+    // 事务执行
+    rpc SendTransaction(SendTransactionRequest) returns (CommonResponseMessage) {}
+    // 提交事务
+    rpc CommitTransaction(CommitTransactionRequest) returns (CommonResponseMessage) {}
+
+}
+
+message NoTransactionCallRequest {
+    string from = 1;
+    string to = 2;
+    string transactionID = 3;
+    bytes payload = 4;
+    bytes signer = 5;
+    int64 timestamp = 6;
+}
+
+message FabricPayload {
+    string channelID = 1;
+    string chainCodeName = 2;
+    string fncName = 3;
+    repeated string args = 4;
+}
+
+message StartTransactionRequest {
+    string channelID = 1;
+    string transactionID = 2;
+    repeated string chainCodes = 3;
+}
+
+message SendTransactionRequest {
+    string channelID = 1;
+    string uuid = 2;
+    string transactionID = 3;
+    uint32 transactionSeq = 4;
+    string chainCodeName = 5;
+    string fncName = 6;
+    repeated string args = 7;
+}
+
+message CommitTransactionRequest {
+    string channelID = 1;
+    string transactionID = 2;
+}
+
+message CommonResponseMessage {
+    string from = 1;
+    string to = 2;
+    string transactionID = 3;
+    bytes payload = 4;
+    bytes signer = 5;
+}
+
