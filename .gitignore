@@ -5,4 +5,5 @@ cmd/client/client
 cmd/server/test
 cmd/server/server
 cmd/server/store
+cmd/tools
 contact/proxy2
