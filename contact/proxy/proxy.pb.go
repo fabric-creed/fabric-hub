@@ -38,12 +38,6 @@ type LockedContract struct {
 	TransactionID string `json:"transactionID"`
 }
 
-type Response struct {
-	Status  int32  `json:"status"`
-	Message string `json:"message"`
-	Payload []byte `json:"payload"`
-}
-
 type GetTransactionStateResponse struct {
 	TransactionID string `json:"transactionID"`
 	Seq           uint64 `json:"seq"`

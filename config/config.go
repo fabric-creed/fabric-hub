@@ -1,4 +1,4 @@
-package global
+package config
 
 type ViperConfig struct {
 	// 存储路径
@@ -14,6 +14,7 @@ type ViperConfig struct {
 type RemoteFabricNamespace struct {
 	Name         string       `json:"name" yaml:"name"`
 	Address      string       `json:"address" yaml:"address"`
+	Port         uint32       `json:"port" yaml:"port"`
 	ClientConfig ClientConfig `json:"clientConfig" yaml:"clientConfig"`
 	Channels     []Channel    `json:"channels" yaml:"channels"`
 	CSP          CSP          `json:"csp" yaml:"csp"`
@@ -26,9 +27,11 @@ type LocalFabricNamespace struct {
 	// sdk 指定的组织名称
 	Organization string `json:"organization" yaml:"organization"`
 	// sdk 指定的用户
-	User     string `json:"user" yaml:"user"`
+	User string `json:"user" yaml:"user"`
+	// 包含的通道
 	Channels []Channel
-	CSP      CSP `json:"csp" yaml:"csp"`
+	// 加密
+	CSP CSP `json:"csp" yaml:"csp"`
 	// 是否为国密
 	IsGM bool `json:"isGM" yaml:"isGM"`
 }
@@ -42,6 +45,8 @@ type Channel struct {
 	ProxyChainCodeName string `json:"proxyChainCodeName" yaml:"proxyChainCodeName"`
 	// 路由合约名称
 	RouterChainCodeName string `json:"routerChainCodeName" yaml:"routerChainCodeName"`
+	// 是否为国密
+	IsGM bool
 }
 
 type ServerConfig struct {

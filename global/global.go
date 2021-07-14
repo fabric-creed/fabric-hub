@@ -2,7 +2,8 @@ package global
 
 import (
 	"fmt"
-	"github.com/fabric-creed/fabric-hub/pkg/common/grpc"
+	"github.com/fabric-creed/fabric-hub/config"
+	"github.com/fabric-creed/fabric-hub/pkg/client"
 	"github.com/fabric-creed/fabric-hub/pkg/common/sw"
 	"github.com/fabric-creed/fabric-hub/pkg/fabric"
 	"github.com/pkg/errors"
@@ -11,8 +12,8 @@ import (
 )
 
 var Config = Configuration{
-	LocalChannelManager: make(map[string]Channel, 0),
-	GRPCClientManager:   make(map[string]*grpc.GRPCClient, 0),
+	LocalChannelManager: make(map[string]config.Channel, 0),
+	HubClientManager:    make(map[string]*client.HubClient, 0),
 	CSPManager:          make(map[string]*sw.SimpleCSP, 0),
 	FabricClientManager: make(map[string]*fabric.Client, 0),
 }
@@ -22,12 +23,12 @@ type Configuration struct {
 	DBPath string
 	// fabric客户端管理器
 	FabricClientManager map[string]*fabric.Client
-	// grpc客户端管理器
-	GRPCClientManager map[string]*grpc.GRPCClient
+	// hub客户端管理器
+	HubClientManager map[string]*client.HubClient
 	// 本fabric环境的通道信息
-	LocalChannelManager map[string]Channel
+	LocalChannelManager map[string]config.Channel
 	// grpc server配置
-	GRPCServerConfig ServerConfig
+	GRPCServerConfig config.ServerConfig
 	// 各链的公私钥对,用于签名和验牵
 	CSPManager map[string]*sw.SimpleCSP
 }
@@ -39,7 +40,7 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	vc := ViperConfig{}
+	vc := config.ViperConfig{}
 	err = viper.Unmarshal(&vc)
 	if err != nil {
 		log.Fatal(err)
@@ -53,10 +54,12 @@ func init() {
 
 	parseLocalNamespaceConfig(vc.LocalFabricNamespace)
 
+	setHubClientCSP()
+
 	Config.GRPCServerConfig = vc.ServerConfig
 }
 
-func parseRemoteNamespaceConfig(namespaces []RemoteFabricNamespace) {
+func parseRemoteNamespaceConfig(namespaces []config.RemoteFabricNamespace) {
 	// 远端网关不要重名，channelID不能为空
 	var nameMap = make(map[string]string, 0)
 	for _, namespace := range namespaces {
@@ -65,7 +68,13 @@ func parseRemoteNamespaceConfig(namespaces []RemoteFabricNamespace) {
 		}
 
 		// 一个namespace下创建一个grpcClient即可
-		client, err := newGRPCClient(namespace.ClientConfig)
+		grpcClient, err := client.NewGRPCClient(
+			namespace.ClientConfig.ClientCertPath,
+			namespace.ClientConfig.ClientKeyPath,
+			namespace.ClientConfig.ClientRootCACertPath,
+			namespace.ClientConfig.ServerRootCAPath,
+			namespace.ClientConfig.IsGm,
+		)
 		if err != nil {
 			panic(errors.Wrapf(err, "failed to create grpc client:%s", namespace.ClientConfig))
 		}
@@ -83,7 +92,10 @@ func parseRemoteNamespaceConfig(namespaces []RemoteFabricNamespace) {
 			if channel.ID == "" {
 				panic(fmt.Errorf("the channel id is empty in remote namespace %s", namespace.Name))
 			}
-			Config.GRPCClientManager[channel.ID] = client
+			Config.HubClientManager[channel.ID], err = client.NewHubClient(namespace.Address, namespace.Port, grpcClient)
+			if err != nil {
+				panic(errors.Wrapf(err, "failed to new hub client, address:%s, namespace:%s", namespace.Address, namespace.Name))
+			}
 			Config.CSPManager[channel.ID] = ks
 		}
 
@@ -91,7 +103,7 @@ func parseRemoteNamespaceConfig(namespaces []RemoteFabricNamespace) {
 	}
 }
 
-func parseLocalNamespaceConfig(namespaces []LocalFabricNamespace) {
+func parseLocalNamespaceConfig(namespaces []config.LocalFabricNamespace) {
 	// 本地的fabric不要重名，channel唯一表示
 	var nameMap = make(map[string]string, 0)
 	for _, namespace := range namespaces {
@@ -121,6 +133,7 @@ func parseLocalNamespaceConfig(namespaces []LocalFabricNamespace) {
 			if channel.ID == "" {
 				panic(fmt.Errorf("the channel id is empty in local namespace %s", namespace.Name))
 			}
+			channel.IsGM = namespace.IsGM
 			Config.FabricClientManager[channel.ID] = client
 			Config.CSPManager[channel.ID] = ks
 			Config.LocalChannelManager[channel.ID] = channel
@@ -130,21 +143,9 @@ func parseLocalNamespaceConfig(namespaces []LocalFabricNamespace) {
 	}
 }
 
-func newGRPCClient(config ClientConfig) (*grpc.GRPCClient, error) {
-	so, err := grpc.ClientSecureOptions(
-		config.ClientCertPath,
-		config.ClientKeyPath,
-		config.ClientRootCACertPath,
-		config.ServerRootCAPath,
-		config.IsGm,
-	)
-	if err != nil {
-		panic(err)
+func setHubClientCSP() {
+	for k, v := range Config.HubClientManager {
+		v.SetCSP(Config.CSPManager)
+		Config.HubClientManager[k] = v
 	}
-	cc := grpc.ClientConfig{
-		SecOpts: so,
-		KaOpts:  grpc.DefaultKeepaliveOptions,
-		Timeout: grpc.DefaultConnectionTimeout,
-	}
-	return grpc.NewGRPCClient(cc)
 }

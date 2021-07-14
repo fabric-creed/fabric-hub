@@ -15,7 +15,7 @@ const _ = grpc.SupportPackageIsVersion6
 
 // HubClient is the client API for Hub service.
 //
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/github.com/fabric-creed/grpc/?tab=doc#ClientConn.NewStream.
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HubClient interface {
 	// 非事务跨链调用
 	NoTransactionCall(ctx context.Context, in *NoTransactionCallRequest, opts ...grpc.CallOption) (*CommonResponseMessage, error)

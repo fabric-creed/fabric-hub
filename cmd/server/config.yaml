@@ -1,9 +1,10 @@
 dbPath: ./store
 
 # 需要连接到远端网关的配置
-remoteNamespace:
+remoteFabricNamespace:
   - name: sss
-    address: 127.0.0.1
+    address: orderer1.example.com
+    port: 2000
     clientConfig:
       useTLS: true
       serverRootCAPath: ./test/ca.crt
@@ -13,9 +14,7 @@ remoteNamespace:
       cert: ./test/server.crt
     channels:
       - name: mychannel
-        id: 1411931467332157440
-        proxyChainCodeName: myproxy
-        routerChainCodeName: router
+        id: 1411931388202418176
 
 # 本地通道相关配置
 localFabricNamespace:
@@ -30,9 +29,9 @@ localFabricNamespace:
     channels:
       - name: mychannel
         # 这里ID通过tool生成
-        id: 1411931388202418176
-        proxyChainCodeName: myproxy
-        routerChainCodeName: router
+        id: 1411931467332157440
+        proxyChainCodeName: proxy
+        routerChainCodeName: router2
     isGM: true
 
 # 网关grpc server配置

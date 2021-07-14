@@ -3,4 +3,5 @@ cmd/client/test
 cmd/client/client
 cmd/server/test
 cmd/server/server
+cmd/server/store
 contact/proxy2

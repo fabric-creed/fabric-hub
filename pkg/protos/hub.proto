@@ -18,16 +18,25 @@ message NoTransactionCallRequest {
     string from = 1;
     string to = 2;
     string transactionID = 3;
-    bytes payload = 4;
-    bytes signer = 5;
-    int64 timestamp = 6;
+    string stepID = 4;
+    bytes payload = 5;
+    bytes signer = 6;
+    int64 timestamp = 7;
 }
 
-message FabricPayload {
-    string channelID = 1;
+message FabricPayloadRequest {
+    string channelName = 1;
     string chainCodeName = 2;
     string fncName = 3;
     repeated string args = 4;
+    FabricCallback callback = 5;
+}
+
+message FabricCallback {
+    string callbackChannelName = 1;
+    string callbackChainCodeName = 2;
+    string callbackFncName = 3;
+    repeated string callbackArgs = 4;
 }
 
 message StartTransactionRequest {
@@ -55,7 +64,10 @@ message CommonResponseMessage {
     string from = 1;
     string to = 2;
     string transactionID = 3;
-    bytes payload = 4;
-    bytes signer = 5;
+    // 用于区别一个事务多个操作
+    string stepID = 4;
+    bytes payload = 5;
+    bytes signer = 6;
+    bytes callback = 7;
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/bwmarrin/snowflake"
@@ -11,24 +12,29 @@ import (
 )
 
 func main() {
-	client, err := client2.NewHubClient("orderer1.example.com:1000", client2.ClientConfig{
-		UseTLS:               true,
-		ClientKeyPath:        "",
-		ClientCertPath:       "",
-		ClientRootCACertPath: "",
-		ServerRootCAPath:     "./test/ca.crt",
-		IsGm:                 true,
-	})
+	grpc, err := client2.NewGRPCClient(
+		"",
+		"",
+		"",
+		"./test/ca.crt",
+		true,
+	)
 	if err != nil {
 		panic(err)
 	}
+
+	conn, err := grpc.NewConnection(fmt.Sprintf("%s:%d", "orderer1.example.com", 1000))
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
 	node, err := snowflake.NewNode(1)
 	if err != nil {
 		panic(err)
 	}
 
-	payload := pb.FabricPayload{
-		ChannelID:     "mychannel",
+	payload := pb.FabricPayloadRequest{
+		ChannelName:   "mychannel",
 		ChainCodeName: "fabcar",
 		FncName:       "QueryCar",
 		Args:          []string{"CAR1"},
@@ -37,18 +43,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	resp, err := client.NoTransactionCall(
-		"1411931388202418176",
-		"1411931388202418176",
-		node.Generate().String(),
-		nil,
-		data,
-		time.Now().Unix(),
-	)
+	resp, err := pb.NewHubClient(conn).NoTransactionCall(context.Background(), &pb.NoTransactionCallRequest{
+		From:          "1411931467332157440",
+		To:            "1411931388202418176",
+		TransactionID: node.Generate().String(),
+		StepID:        "1",
+		Payload:       data,
+		Timestamp:     time.Now().Unix(),
+	})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(resp.Payload)
 	r, err := fabric.DecodeInvokeChainCodeResponse(resp.Payload)
 	if err != nil {
 		panic(err)

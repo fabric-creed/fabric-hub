@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"github.com/fabric-creed/fabric-hub/global"
 	"github.com/fabric-creed/fabric-hub/pkg/protos/pb"
 	"github.com/fabric-creed/fabric-sdk-go/pkg/client/channel"
 	"github.com/pkg/errors"
@@ -14,16 +13,23 @@ const (
 )
 
 func (s *HubService) NoTransactionCall(ctx context.Context, req *pb.NoTransactionCallRequest) (*pb.CommonResponseMessage, error) {
-	// 首先判断目的链是否本地
-	if _, ok := global.Config.LocalChannelManager[req.To]; !ok {
+	if req.From == req.To {
+		return nil, errors.Errorf("from channel id is equal to channel id ")
+	}
+
+	if _, ok := s.channelManager[req.From]; ok {
+		return s.hubClientManager[req.To].NoTransactionCall(req)
+	}
+
+	if _, ok := s.channelManager[req.To]; !ok {
 		return nil, errors.New("the to channel id:[" + req.To + "] is invalid")
 	}
 
-	fromCSP, ok := global.Config.CSPManager[req.From]
+	fromCSP, ok := s.csp[req.From]
 	if !ok {
 		return nil, errors.New("the from channel id is invalid")
 	}
-	toCSP, ok := global.Config.CSPManager[req.To]
+	toCSP, ok := s.csp[req.To]
 	if !ok {
 		return nil, errors.New("the to channel id is invalid")
 	}
@@ -36,14 +42,14 @@ func (s *HubService) NoTransactionCall(ctx context.Context, req *pb.NoTransactio
 	if !valid {
 		return nil, errors.New("signer is invalid")
 	}
-	var fabricPayload = &pb.FabricPayload{}
+	var fabricPayload = &pb.FabricPayloadRequest{}
 	err = json.Unmarshal(req.Payload, fabricPayload)
 	if err != nil {
-		errors.Wrapf(err, "payload is invalid")
+		return nil, errors.Wrapf(err, "payload is invalid")
 	}
-	channelClient, err := global.Config.FabricClientManager[req.To].Channel(fabricPayload.GetChannelID())
+	channelClient, err := s.fabricManager[req.To].Channel(fabricPayload.GetChannelName())
 	if err != nil || channelClient == nil {
-		return nil, errors.Wrapf(err, "failed to get channel by %s", fabricPayload.GetChannelID())
+		return nil, errors.Wrapf(err, "failed to get channel by %s", fabricPayload.GetChannelName())
 	}
 
 	var args [][]byte
@@ -59,7 +65,7 @@ func (s *HubService) NoTransactionCall(ctx context.Context, req *pb.NoTransactio
 	args = append(args, ccArgs)
 
 	resp, err := channelClient.ChannelExecute(channel.Request{
-		ChaincodeID: global.Config.LocalChannelManager[req.To].ProxyChainCodeName,
+		ChaincodeID: s.channelManager[req.To].ProxyChainCodeName,
 		Fcn:         FncNoTransactionCall,
 		Args:        args,
 		IsInit:      false,
@@ -78,11 +84,17 @@ func (s *HubService) NoTransactionCall(ctx context.Context, req *pb.NoTransactio
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to sign payload by %s ", req.To)
 	}
+	callback, err := json.Marshal(fabricPayload.Callback)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal callback")
+	}
 	return &pb.CommonResponseMessage{
 		From:          req.From,
 		To:            req.To,
 		TransactionID: req.TransactionID,
+		StepID:        req.StepID,
 		Payload:       payload,
 		Signer:        sig,
+		Callback:      callback,
 	}, nil
 }

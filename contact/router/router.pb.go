@@ -1,8 +1,8 @@
 package main
 
 const (
-	RequestKey        = "request-%s"
-	CallbackResultKey = "callbackResult-%s"
+	RequestKey        = "request-%s-%s"
+	CallbackResultKey = "callbackResult-%s-%s"
 )
 
 type ChainCodeInvokeRequest struct {
@@ -12,27 +12,14 @@ type ChainCodeInvokeRequest struct {
 	To string `json:"to"`
 	// 交易ID
 	TransactionID string `json:"transactionId"`
+	// 步骤ID
+	StepID string `json:"transactionId"`
 	// 跨链内容
-	Payload []byte `json:"payload"`
+	Payload string `json:"payload"`
 	// 签名
 	Signer string `json:"signer"`
 	// 时间戳
 	Timestamp int64 `json:"timestamp"`
-}
-
-type Payload struct {
-	// 目标链通道名称
-	ChannelName string `json:"channelName"`
-	// 目标链方法名称
-	FuncName string `json:"funcName"`
-	// 目标链方法所需参数
-	Args string `json:"args"`
-	// 源链回调的通道名称
-	CallbackChannelName string `json:"callbackChannelName"`
-	// 源链回调方法名
-	CallbackFuncName string `json:"callbackFuncName"`
-	// 源链回调方法所需参数
-	CallbackArgs string `json:"callbackArgs"`
 }
 
 type ChainCodeInvokeResult struct {
@@ -42,12 +29,12 @@ type ChainCodeInvokeResult struct {
 	To string `json:"to"`
 	// 交易ID
 	TransactionID string `json:"transactionId"`
+	// 步骤ID
+	StepID string `json:"stepID"`
 	// 跨链内容
-	Payload []byte `json:"payload"`
+	Payload string `json:"payload"`
 	// 签名
 	Signer string `json:"signer"`
-	// 状态码
-	Code string `json:"code"`
 	// 错误信息
 	Message string `json:"message"`
 }

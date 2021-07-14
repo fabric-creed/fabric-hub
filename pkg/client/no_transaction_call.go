@@ -2,46 +2,55 @@ package client
 
 import (
 	"context"
-	"github.com/fabric-creed/fabric-hub/global"
+	"fmt"
 	"github.com/fabric-creed/fabric-hub/pkg/protos/pb"
+	"github.com/fabric-creed/grpc/codes"
+	"github.com/fabric-creed/grpc/status"
 	"github.com/pkg/errors"
 	"time"
 )
 
-func (c *HubClient) NoTransactionCall(from, to, transactionID string, signer, payload []byte, timestamp int64) (*pb.CommonResponseMessage, error) {
-	if signer == nil {
-		fromCSP, ok := global.Config.CSPManager[from]
+func (c *HubClient) NoTransactionCall(request *pb.NoTransactionCallRequest) (*pb.CommonResponseMessage, error) {
+	if request.Signer == nil {
+		fromCSP, ok := c.csp[request.From]
 		if !ok {
 			return nil, errors.New("the from id is invalid")
 		}
-		sign, err := fromCSP.Sign(payload)
+		sign, err := fromCSP.Sign(request.Payload)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to sign payload by %s", from)
+			return nil, errors.Wrapf(err, "failed to sign payload by %s", request.From)
 		}
-		signer = sign
+		request.Signer = sign
 	}
-	conn, err := c.client.NewConnection(c.address)
+	if request.Timestamp == 0 {
+		request.Timestamp = time.Now().Unix()
+	}
+
+	retryTime := 5
+retry:
+	conn, err := c.client.NewConnection(fmt.Sprintf("%s:%d", c.address, c.port))
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	if timestamp == 0 {
-		timestamp = time.Now().Unix()
-	}
 
-	resp, err := pb.NewHubClient(conn).NoTransactionCall(context.Background(), &pb.NoTransactionCallRequest{
-		From:          from,
-		To:            to,
-		TransactionID: transactionID,
-		Payload:       payload,
-		Signer:        signer,
-		Timestamp:     timestamp,
-	})
+	resp, err := pb.NewHubClient(conn).NoTransactionCall(context.Background(), request)
 	if err != nil {
+		statu, ok := status.FromError(err)
+		if ok {
+			// 判断是否为调用超时
+			if statu.Code() == codes.DeadlineExceeded {
+				if retryTime > 0 {
+					retryTime--
+					conn.Close()
+					goto retry
+				}
+			}
+		}
 		return nil, err
 	}
 
-	toCSP, ok := global.Config.CSPManager[resp.To]
+	toCSP, ok := c.csp[resp.To]
 	if !ok {
 		return nil, errors.New("the to channel id is invalid")
 	}

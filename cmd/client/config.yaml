@@ -1,7 +1,7 @@
 dbPath: ./store
 
 # 需要连接到远端网关的配置
-remoteNamespace:
+remoteFabricNamespace:
   - name: sss
     address: 127.0.0.1
     clientConfig:
@@ -14,7 +14,7 @@ remoteNamespace:
     channels:
       - name: mychannel
         id: 1411931467332157440
-        proxyChainCodeName: myproxy
+        proxyChainCodeName: proxy
         routerChainCodeName: router
 
 # 本地通道相关配置
@@ -30,7 +30,7 @@ localFabricNamespace:
     channels:
       - name: mychannel
         id: 1411931388202418176
-        proxyChainCodeName: myproxy
+        proxyChainCodeName: proxy
         routerChainCodeName: router
 # 网关grpc server配置
 serverConfig:

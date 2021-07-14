@@ -130,6 +130,7 @@ func uint64ToString(u uint64) string {
 func uint64ToBytes(u uint64) []byte {
 	return []byte(uint64ToString(u))
 }
+
 func checkError(err error) {
 	if err != nil {
 		panic(err)

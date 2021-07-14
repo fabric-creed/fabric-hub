@@ -1,55 +1,44 @@
 package client
 
 import (
-	"context"
-	"github.com/fabric-creed/fabric-hub/global"
 	"github.com/fabric-creed/fabric-hub/pkg/common/grpc"
-	"github.com/fabric-creed/fabric-hub/pkg/protos/pb"
-	"github.com/pkg/errors"
-	"time"
+	"github.com/fabric-creed/fabric-hub/pkg/common/sw"
 )
 
 type HubClient struct {
 	address string
+	port    uint32
 	client  *grpc.GRPCClient
+	csp     map[string]*sw.SimpleCSP
 }
 
-type ClientConfig struct {
-	UseTLS bool
-	// key 路径
-	ClientKeyPath string
-	// cert 路径
-	ClientCertPath string
-	// cert 路径
-	ClientRootCACertPath string
-	// Ca cert 路径
-	ServerRootCAPath string
-	// 是否是国密
-	IsGm bool
-}
-
-func NewHubClient(address string, config ClientConfig) (*HubClient, error) {
-	secOpts, err := grpc.ClientSecureOptions(
-		config.ClientCertPath,
-		config.ClientKeyPath,
-		config.ClientRootCACertPath,
-		config.ServerRootCAPath,
-		config.IsGm,
-	)
-	if err != nil {
-		return nil, err
-	}
-	client, err := grpc.NewGRPCClient(grpc.ClientConfig{
-		SecOpts: secOpts,
-		KaOpts:  grpc.DefaultKeepaliveOptions,
-		Timeout: grpc.DefaultConnectionTimeout,
-	})
-	if err != nil {
-		return nil, err
-	}
+func NewHubClient(address string, port uint32, client *grpc.GRPCClient) (*HubClient, error) {
 	return &HubClient{
 		address: address,
+		port:    port,
 		client:  client,
 	}, nil
 }
 
+func NewGRPCClient(certPath, keyPath, caCertPath, serverCACertPath string, isGm bool) (*grpc.GRPCClient, error) {
+	so, err := grpc.ClientSecureOptions(
+		certPath,
+		keyPath,
+		caCertPath,
+		serverCACertPath,
+		isGm,
+	)
+	if err != nil {
+		return nil, err
+	}
+	cc := grpc.ClientConfig{
+		SecOpts: so,
+		KaOpts:  grpc.DefaultKeepaliveOptions,
+		Timeout: grpc.DefaultConnectionTimeout,
+	}
+	return grpc.NewGRPCClient(cc)
+}
+
+func (c *HubClient) SetCSP(csp map[string]*sw.SimpleCSP) {
+	c.csp = csp
+}

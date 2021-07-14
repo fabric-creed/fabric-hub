@@ -18,20 +18,14 @@ func (r *RouterContract) Init(ctx contractapi.TransactionContextInterface) error
 }
 
 // 跨链调用请求
-func (r *RouterContract) ChainCodeInvoke(ctx contractapi.TransactionContext, from, to, transactionID, payload string) (string, error) {
+func (r *RouterContract) ChainCodeInvoke(ctx contractapi.TransactionContextInterface, from, to, transactionID, stepID, payload, signer string) (string, error) {
 	stub := ctx.GetStub()
-	data, err := stub.GetState(fmt.Sprintf(RequestKey, transactionID))
+	data, err := stub.GetState(fmt.Sprintf(RequestKey, transactionID, stepID))
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get state by %s", fmt.Sprintf(RequestKey, transactionID))
+		return "", errors.Wrapf(err, "failed to get state by %s", fmt.Sprintf(RequestKey, transactionID, stepID))
 	}
 	if data != nil {
 		return "", errors.New("transactionID is already existed")
-	}
-
-	var payloadData Payload
-	err = json.Unmarshal([]byte(payload), &payloadData)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to unmarshal payload")
 	}
 
 	timestamp, err := stub.GetTxTimestamp()
@@ -43,28 +37,29 @@ func (r *RouterContract) ChainCodeInvoke(ctx contractapi.TransactionContext, fro
 		From:          from,
 		To:            to,
 		TransactionID: transactionID,
-		Payload:       []byte(payload),
-		Signer:        "",
+		StepID:        stepID,
+		Payload:       payload,
+		Signer:        signer,
 		Timestamp:     timestamp.Seconds,
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "failed to marshal ChainCodeInvokeRequest")
 	}
-	err = stub.PutState(fmt.Sprintf(RequestKey, transactionID), requestData)
+	err = stub.PutState(fmt.Sprintf(RequestKey, transactionID, stepID), requestData)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to put state by %s, data:%s",
-			fmt.Sprintf(RequestKey, transactionID), string(requestData))
+			fmt.Sprintf(RequestKey, transactionID, stepID), string(requestData))
 	}
 
 	return transactionID, nil
 }
 
 // 跨链回调接口
-func (r *RouterContract) ChainCodeInvokeResult(ctx contractapi.TransactionContext, from, to, payload, transactionID, signer, code, message string) error {
+func (r *RouterContract) ChainCodeInvokeResult(ctx contractapi.TransactionContextInterface, from, to, transactionID, stepID, payload, signer, message string) error {
 	stub := ctx.GetStub()
-	data, err := stub.GetState(fmt.Sprintf(RequestKey, transactionID))
+	data, err := stub.GetState(fmt.Sprintf(RequestKey, transactionID, stepID))
 	if err != nil {
-		return errors.Wrapf(err, "failed to get state by %s", fmt.Sprintf(RequestKey, transactionID))
+		return errors.Wrapf(err, "failed to get state by %s", fmt.Sprintf(RequestKey, transactionID, stepID))
 	}
 	if data == nil {
 		return errors.New("transactionID is not found")
@@ -74,32 +69,27 @@ func (r *RouterContract) ChainCodeInvokeResult(ctx contractapi.TransactionContex
 		From:          from,
 		To:            to,
 		TransactionID: transactionID,
-		Payload:       []byte(payload),
+		StepID:        stepID,
+		Payload:       payload,
 		Signer:        signer,
-		Code:          code,
 		Message:       message,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal ChainCodeInvokeResult")
 	}
-	err = ctx.GetStub().PutState(fmt.Sprintf(CallbackResultKey, transactionID), resultData)
+	err = ctx.GetStub().PutState(fmt.Sprintf(CallbackResultKey, transactionID, stepID), resultData)
 	if err != nil {
-		return errors.Wrapf(err, "failed to put state by %s, data:%s", fmt.Sprintf(CallbackResultKey, transactionID), string(resultData))
+		return errors.Wrapf(err, "failed to put state by %s, data:%s", fmt.Sprintf(CallbackResultKey, transactionID, stepID), string(resultData))
 	}
 	return nil
 }
 
 // 获取跨链调用结果
-func (r *RouterContract) QueryInvokeResult(ctx contractapi.TransactionContext, uid string) (ChainCodeInvokeResult, error) {
+func (r *RouterContract) QueryInvokeResult(ctx contractapi.TransactionContextInterface, transactionID, stepID string) (ChainCodeInvokeResult, error) {
 	result := ChainCodeInvokeResult{}
-	id, err := stringToUint64(uid)
+	data, err := ctx.GetStub().GetState(fmt.Sprintf(CallbackResultKey, transactionID, stepID))
 	if err != nil {
-		return result, errors.Wrap(err, "failed to transfer string to uint64")
-	}
-
-	data, err := ctx.GetStub().GetState(fmt.Sprintf(CallbackResultKey, id))
-	if err != nil {
-		return result, errors.Wrapf(err, "failed to get state by %s", fmt.Sprintf(CallbackResultKey, id))
+		return result, errors.Wrapf(err, "failed to get state by %s", fmt.Sprintf(CallbackResultKey, transactionID, stepID))
 	}
 
 	if data == nil {

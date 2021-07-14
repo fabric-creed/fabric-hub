@@ -27,6 +27,7 @@ func NewController(dbPath string) *Controller {
 		if err != nil {
 			panic(err)
 		}
+		db.Init(new(database.Block))
 		instantDB = db
 	})
 
@@ -34,28 +35,21 @@ func NewController(dbPath string) *Controller {
 }
 
 func (c *Controller) FetchLatestBlockNum() (uint64, error) {
-	block := &database.Block{}
-	err := c.db.Select().Limit(1).Reverse().Find(block)
+	var block []database.Block
+	err := c.db.Select().Limit(1).Reverse().Find(&block)
 	if err != nil {
+		if err == storm.ErrNotFound {
+			return 0, nil
+		}
 		return 0, err
 	}
 
-	return block.BlockNumber, nil
-}
-
-func (c *Controller) FetchBlockByBlockHash(blockHash string) (*database.Block, error) {
-	var preBlock = &database.Block{}
-	err := c.db.Select(q.Eq("BlockHash", blockHash)).Find(preBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	return preBlock, nil
+	return block[0].BlockNumber, nil
 }
 
 func (c *Controller) CreateBlock(block *database.Block) error {
-	var preBlock = &database.Block{}
-	err := c.db.Select(q.Eq("BlockHash", block.PreviousHash)).Find(preBlock)
+	var preBlock []database.Block
+	err := c.db.Select(q.Eq("BlockHash", block.PreviousHash)).Find(&preBlock)
 	if err != nil && err != storm.ErrNotFound {
 		return err
 	}
@@ -65,9 +59,9 @@ func (c *Controller) CreateBlock(block *database.Block) error {
 		tx.Rollback()
 		return err
 	}
-	if preBlock != nil {
-		preBlock.NextHash = block.BlockHash
-		if err = tx.Update(preBlock); err != nil {
+	if len(preBlock) > 0 && preBlock[0].BlockHash != "" {
+		preBlock[0].NextHash = block.BlockHash
+		if err = tx.Update(preBlock[0]); err != nil {
 			tx.Rollback()
 			return err
 		}
