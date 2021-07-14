@@ -87,13 +87,13 @@ func (f *Fabric) FetchNextBlock() (*cc.BlockInfo, error) {
 func (f *Fabric) HandleCrossChainRequest(request interface{}) (*cc.CrossChainResponse, error) {
 	response := &cc.CrossChainResponse{}
 	tctl := transaction.NewController(f.dbPath)
-	if fccr, ok := request.(cc.FabricCrossChainRequest); ok {
+	if fccr, ok := request.(FabricCrossChainRequest); ok {
 		// 首先判断txHash是否已经存在了,存在则跳过
 		_, err := tctl.FetchTransactionByTransactionHash(fccr.TxHash)
 		if err == nil {
 			return nil, nil
 		}
-		
+
 		switch fccr.Request.(type) {
 		case *pb.NoTransactionCallRequest:
 			req := fccr.Request.(*pb.NoTransactionCallRequest)
@@ -228,7 +228,7 @@ func (f *Fabric) queryBlock(blockNumber uint64) (*cc.BlockInfo, error) {
 				return nil, err
 			}
 			if request != nil {
-				requests = append(requests, cc.FabricCrossChainRequest{
+				requests = append(requests, FabricCrossChainRequest{
 					TxHash:      txHash,
 					BlockNumber: pbBlock.Header.Number,
 					BlockHash:   pbBlock.BlockHash,

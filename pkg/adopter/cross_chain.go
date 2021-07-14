@@ -30,14 +30,6 @@ type CrossChainResponse struct {
 	CallbackArgs          []byte
 }
 
-type FabricCrossChainRequest struct {
-	TxHash      string
-	BlockNumber uint64
-	BlockHash   string
-	OriginInfo  []byte
-	Request     interface{}
-}
-
 type CrossChainTask struct {
 	cc CrossChain
 }
